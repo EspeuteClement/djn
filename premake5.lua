@@ -28,7 +28,7 @@ end
 function linkSDL2()
 	libdirs "lib/SDL2/lib/x64"
 
-	links {"SDL2", "SDL2main"}
+	links {"SDL2"}
 end
 
 project "djn"
@@ -41,6 +41,8 @@ project "djn"
 	linkSDL2()
 
 	debugdir "."
+
+	entrypoint "mainCRTStartup"
 
 project "djnPack"
 	kind "ConsoleApp"

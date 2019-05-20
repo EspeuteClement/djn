@@ -1,5 +1,6 @@
 #include "djn.h"
 
+#define SDL_MAIN_HANDLED
 #include <SDL.h>	// Used very sparingly for : Input, window creation, Window final blit
 #include <cstring>	// Memset
 
@@ -12,6 +13,7 @@ static SDL_Surface* gSDLGameSurface = nullptr;
 static djnConfig gConfig;
 static bool gQuitting = false;
 static bool gInit = false;
+uint16_t* gScreenBuffer;
 
 static bool CreateSurface()
 {

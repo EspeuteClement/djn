@@ -9,7 +9,7 @@
 #define WINDOW_WIDTH (GAME_WIDTH*2)
 #define WINDOW_HEIGHT (GAME_HEIGHT*2)
 
-uint16_t* gScreenBuffer = nullptr;
+extern uint16_t* gScreenBuffer;
 
 struct djnConfig
 {

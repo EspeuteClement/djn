@@ -13,8 +13,6 @@ Private Members : _CamelCase
 Indent with tabs
 */
 
-
-
 void Update()
 {
 	
@@ -23,7 +21,6 @@ void Update()
 void Draw() {
 	memset(gScreenBuffer, 0x8F, GAME_WIDTH * GAME_HEIGHT * 2);
 } //render
-
 
 int main(int argc, char *argv[]) {
 
