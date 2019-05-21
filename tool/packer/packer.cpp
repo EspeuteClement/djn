@@ -3,83 +3,100 @@
 #pragma warning( push)
 #pragma warning( disable : 26451 6011 6262 6308 6387 28182 ) // Arithmetic overflow
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include "stb/stb_image.h"
 #pragma warning( pop )
 #include <windows.h>
 #include <cstdint>
 
 #include <cstring>
 
-#define GET_R(x,y) (data[(x + y * w)*4 + 0])
-#define GET_G(x,y) (data[(x + y * w)*4 + 1])
-#define GET_B(x,y) (data[(x + y * w)*4 + 2])
-#define GET_A(x,y) (data[(x + y * w)*4 + 3])
+#include <direct.h>
 
 struct ImageData {
 	int w; 
 	int h;
 
-	uint8_t* data;
+	uint16_t* data;
+
+	ImageData(int _w, int _h) : w(_w), h(_h)
+	{
+		data = (uint16_t*) malloc(w*h * sizeof(uint16_t));
+	}
+
+	~ImageData()
+	{
+		free(data);
+	}
+
+	inline uint16_t& getPixel(int x, int y)
+	{
+		return data[x + y*w];
+	}
 };
 
-int g_image_w;
-int g_image_h;
-unsigned char* g_image_data;
+char* gImagePath = "res/data.png";
 
-int open_image()
+ImageData* djnPakLoadImage(const char* imagePath)
 {
 	int comp;
-	g_image_data = stbi_load("res/data.png", &g_image_w, &g_image_h, &comp, 4);
+	int w, h;
+	unsigned char* tempimage = stbi_load(imagePath, &w, &h, &comp, 4);
 
-	if (g_image_data == nullptr)
+	if (tempimage == nullptr)
 	{
-		printf("Couldn't load file");
-		return 0;
+		printf("Couldn't load image file %s.\n", imagePath);
+		return nullptr;
 	}
-	return 1;
-}
 
-void close_image()
-{
-	stbi_image_free(g_image_data);
-}
+	ImageData* data = new ImageData(w, h);
 
-void parse_image(FILE* output)
-{
-
-	int w = g_image_w;
-	int h = g_image_h;
-	unsigned char* data = g_image_data;
-
-	// Generated data is : 0x1234,
-
-	int position = 0;
-	for (int y = 0; y < h; ++y)
+	for (int y = 0; y < data->h; ++y)
 	{
-		for (int x = 0; x < w; ++x)
+		for (int x = 0; x < data->w; ++x)
+		{
+			uint16_t bytes =
+				((int)((float)tempimage[(x + y * w) * 4 + 0] / 256.0f * 32.0f))			|	// R
+				((int)((float)tempimage[(x + y * w) * 4 + 1] / 256.0f * 32.0f) << 5)	|	// G
+				((int)((float)tempimage[(x + y * w) * 4 + 2] / 256.0f * 32.0f) << 10)	|	// B
+				((int)((float)tempimage[(x + y * w) * 4 + 3] / 256.0f * 2.0f) << 15);		// A
+			data->getPixel(x, y) = bytes;
+		}
+	}
+
+	stbi_image_free(tempimage);
+
+	return data;
+}
+
+void parse_image(FILE* output, ImageData* Data)
+{
+	int position = 0;
+	for (int y = 0; y < Data->h; ++y)
+	{
+		for (int x = 0; x < Data->w; ++x)
 		{
 			char bfr[10];
 			if (x > 0 || y > 0)
 				fwrite(",", 1, 1, output);
-
-			uint16_t bytes =
-				((int)((float)GET_R(x, y) / 256.0f * 32.0f)) |
-				((int)((float)GET_G(x, y) / 256.0f * 32.0f) << 5) |
-				((int)((float)GET_B(x, y) / 256.0f * 32.0f) << 10) |
-				((int)((float)GET_A(x, y) / 256.0f * 2.0f) << 15);
-			sprintf_s(bfr, sizeof(bfr), "0x%04X", (int)bytes);
-			fwrite(bfr, 6, 1, output);
-			//printf("(%d,%d,%d,%d),", GET_R(x,y), GET_G(x, y), GET_B(x, y), GET_A(x, y));
+			fprintf_s(output, "0x%04X", (int)Data->getPixel(x,y));
 		}
 	}
 }
 
 void parse_template()
 {
-	FILE* output = fopen("output.c", "w");
-	FILE* templ = fopen("tool/template.c", "r");
+	FILE* output = nullptr;
+	FILE* templ = nullptr;
 
-	if (output && templ)
+	ImageData* Data = djnPakLoadImage(gImagePath);
+
+	const char* templPath = "res/template.c";
+	errno_t outerr = fopen_s(&output, "_bin/output.c", "w");
+	errno_t err = fopen_s(&templ, templPath, "r");
+
+	if (Data != nullptr 
+		&& outerr == 0
+		&& err == 0)
 	{
 		int c = 0;
 		do
@@ -107,19 +124,19 @@ void parse_template()
 						*ptr = c;
 						ptr++;
 					}
-				} while (c != EOF && ptr - buffer < 256 - 1);
+				} while (c != EOF && ptr - buffer < sizeof(buffer) - 1);
 
 				if (strcmp(buffer, "content") == 0)
 				{
-					parse_image(output);
+					parse_image(output, Data);
 				}
 				else if (strcmp(buffer, "width") == 0)
 				{
-					fprintf_s(output, "%d", g_image_w);
+					fprintf_s(output, "%d", Data->w);
 				}
 				else if (strcmp(buffer, "height") == 0)
 				{
-					fprintf_s(output, "%d", g_image_h);
+					fprintf_s(output, "%d", Data->h);
 				}
 
 				fwrite(&c, 1, 1, output);
@@ -128,10 +145,15 @@ void parse_template()
 	}
 	else
 	{
-		printf("Couldn't open output");
+		if (Data == nullptr) {}
+		else if (output == nullptr)
+			printf("Couldn't open output file\n");
+		else if (templ == nullptr)
+			printf("Couldn't open template file %s\n", templPath);
 	}
 
-
+	if (Data)
+		delete Data;
 	if (templ)
 		fclose(templ);
 	if (output)
@@ -139,17 +161,11 @@ void parse_template()
 }
 
 int main(int argc, char* argv[]) {
-	printf("Hello world\n");
-	printf("%s\n", argv[0]);
-	char buf[256];
-	GetCurrentDirectoryA(256, buf);
-	printf("Current working dir: %s\n", buf);
+	char bfr[256];
+	_getcwd(bfr, 256);
+	printf("%s\n", bfr);
 
-	if (!open_image())
-		return -1;
 	parse_template();
-	close_image();
-
 	return 1;
 }
 

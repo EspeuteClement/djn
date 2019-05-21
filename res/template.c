@@ -3,7 +3,7 @@
 #define DATA_WIDTH $width
 #define DATA_HEIGHT $height
 
-Uint16 data[] = 
-[
+uint32_t data[DATA_WIDTH*DATA_HEIGHT] = 
+{
 	$content
-];
+};
