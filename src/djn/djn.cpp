@@ -3,6 +3,7 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>	// Used very sparingly for : Input, window creation, Window final blit
 #include <cstring>	// Memset
+#include <cstdio>
 
 // SDL stuff
 static SDL_Window* gSDLWindow = nullptr;
@@ -13,7 +14,9 @@ static SDL_Surface* gSDLGameSurface = nullptr;
 static djnConfig gConfig;
 static bool gQuitting = false;
 static bool gInit = false;
-uint16_t* gScreenBuffer;
+djnImage gScreenBuffer;
+
+uint32_t gframe = 0;
 
 static bool CreateSurface()
 {
@@ -39,7 +42,9 @@ static bool CreateSurface()
 		return false;
 	}
 
-	gScreenBuffer = (uint16_t*)gSDLGameSurface->pixels;
+	gScreenBuffer.w = 320;
+	gScreenBuffer.h = 240;
+	gScreenBuffer.data = (uint16_t*)gSDLGameSurface->pixels;
 	return true;
 }
 
@@ -90,12 +95,16 @@ static void _djnStep()
 	gConfig.DrawFunction();
 	SDL_UnlockSurface(gSDLGameSurface);
 
+	//SDL_LockSurface(gSDLWindowSurface);
 	SDL_BlitScaled(gSDLGameSurface, &SDL_Rect({ 0,0,GAME_WIDTH, GAME_HEIGHT }), gSDLWindowSurface, &SDL_Rect({ 0,0,WINDOW_WIDTH, WINDOW_HEIGHT }));
-	SDL_UpdateWindowSurface(gSDLWindow);
+	//SDL_UnlockSurface(gSDLWindowSurface);
 
+	SDL_UpdateWindowSurface(gSDLWindow);
+	printf("frame %d", gframe++);
 	// Todo : True sync
-	SDL_Delay(2);
+	//SDL_Delay(1);
 }
+
 
 void djnRun()
 {
@@ -137,15 +146,15 @@ void djnDeInit()
 
 #define PIXEL(buffer, x,y,w) (buffer[(x)+(y)*(w)])
 
-void djnBlit(djnBuffer source, djnBuffer target, int sx, int sy, int sw, int sh, int tx, int ty, int tw, int th)
+void djnBlit(djnImage& source, djnImage& target, int sx, int sy, int sw, int sh, int tx, int ty)
 {
 	for (int y = 0; y < sh; ++y)
 	{
 		for (int x = 0; x < sw; ++x)
 		{
-			uint16_t Pixel = PIXEL(source, sx + x, sy + y, sw);
+			djnPixel Pixel = source.get(sx + x, sy + y);
 			if (Pixel & 0x8000)
-				PIXEL(target, tx+x, ty+y, tw) = Pixel;
+				target.get(tx+x,ty+y) = Pixel;
 		}
 	}
 }

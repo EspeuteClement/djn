@@ -2,10 +2,11 @@
 #define _DATA_H_
 
 #include <cstdint>
+#include "djn/djn.h"
 
-#define GAME_SPRITE_WIDTH $width
-#define GAME_SPRITE_HEIGHT $height
+#define GAME_SPRITE_WIDTH $width$
+#define GAME_SPRITE_HEIGHT $height$
 
-extern uint16_t gGameSprites[GAME_SPRITE_WIDTH*GAME_SPRITE_HEIGHT];
+extern djnImage gGameSprites;
 
 #endif

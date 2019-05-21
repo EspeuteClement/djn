@@ -32,7 +32,7 @@ function linkSDL2()
 end
 
 project "djn"
-	kind "WindowedApp"
+	kind "ConsoleApp"
 	files "src/**"
 
 	includedirs "src"
@@ -48,6 +48,6 @@ project "djnPack"
 	kind "ConsoleApp"
 	files "tool/packer/**"
 
-	includedirs "inc"
+	includedirs {"inc", "scr/djn"}
 
 	debugdir "."

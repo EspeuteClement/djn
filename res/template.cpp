@@ -1,6 +1,13 @@
 #include "data.generated.h"
 
-uint16_t gGameSprites[GAME_SPRITE_WIDTH*GAME_SPRITE_HEIGHT] = 
+static uint16_t _$name$data[] = 
 {
-	$content
+	$content$
+};
+
+djnImage gGameSprites = 
+{
+	GAME_SPRITE_WIDTH,
+	GAME_SPRITE_HEIGHT,
+	_$name$data	
 };

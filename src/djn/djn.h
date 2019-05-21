@@ -9,9 +9,18 @@
 #define WINDOW_WIDTH (GAME_WIDTH*2)
 #define WINDOW_HEIGHT (GAME_HEIGHT*2)
 
-typedef uint16_t* djnBuffer;
+typedef uint16_t djnPixel;
 
-extern djnBuffer gScreenBuffer;
+struct djnImage
+{
+	int w;
+	int h;
+	djnPixel* data;
+
+	inline djnPixel& get(int x, int y) { return data[x + y * w]; };
+};
+
+extern djnImage gScreenBuffer;
 
 struct djnConfig
 {
@@ -25,6 +34,6 @@ void djnRun();
 
 void djnDeInit();
 
-void djnBlit(djnBuffer source, djnBuffer target, int sx, int sy, int sw, int sh, int tx, int ty, int tw, int th);
+void djnBlit(djnImage& source, djnImage& target, int sx, int sy, int sw, int sh, int tx, int ty);
 
 #endif

@@ -15,14 +15,16 @@ Indent with tabs
 
 #include "data.generated.h"
 
+int x = 0;
 void Update()
 {
-	
+	x += 1;
+	x = x % 304;
 }
 
 void Draw() {
-	memset(gScreenBuffer, 0x8F, GAME_WIDTH * GAME_HEIGHT * 2);
-	djnBlit(gGameSprites, gScreenBuffer, 0, 0, GAME_SPRITE_WIDTH, 240, 0, 0, 320, 240);
+	memset(gScreenBuffer.data, 0x8F, GAME_WIDTH * GAME_HEIGHT * 2);
+	djnBlit(gGameSprites, gScreenBuffer, 16, 0, 16,16, x, 0);
 } //render
 
 int main(int argc, char *argv[]) {

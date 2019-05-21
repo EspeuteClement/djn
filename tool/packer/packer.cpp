@@ -115,16 +115,22 @@ void parse_template(const char* TemplatePath, const char* OutputPath, ImageData*
 				do
 				{
 					c = getc(templ);
-					if (c < 'a' || c > 'z' )
+					if (c == '$' )
 					{
 						break;
 					}
-					else
+					else if (c >= 'a' && c <= 'z')
 					{
 						*ptr = c;
 						ptr++;
 					}
+					else
+					{
+						assert(false);
+					}
 				} while (c != EOF && ptr - buffer < sizeof(buffer) - 1);
+
+				assert(ptr - buffer < sizeof(buffer) - 1);
 
 				if (strcmp(buffer, "content") == 0)
 				{
@@ -138,8 +144,12 @@ void parse_template(const char* TemplatePath, const char* OutputPath, ImageData*
 				{
 					fprintf_s(output, "%d", Data->h);
 				}
+				else if (strcmp(buffer, "name") == 0)
+				{
+					fprintf_s(output, "tempdata");
+				}
 
-				fwrite(&c, 1, 1, output);
+				//fwrite(&c, 1, 1, output);
 			}
 		} while (c != EOF);
 		printf("Succesfully generated %s !\n", OutputPath);
