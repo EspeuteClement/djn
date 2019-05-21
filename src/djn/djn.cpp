@@ -134,3 +134,18 @@ void djnDeInit()
 
 	SDL_Quit();
 }
+
+#define PIXEL(buffer, x,y,w) (buffer[(x)+(y)*(w)])
+
+void djnBlit(djnBuffer source, djnBuffer target, int sx, int sy, int sw, int sh, int tx, int ty, int tw, int th)
+{
+	for (int y = 0; y < sh; ++y)
+	{
+		for (int x = 0; x < sw; ++x)
+		{
+			uint16_t Pixel = PIXEL(source, sx + x, sy + y, sw);
+			if (Pixel & 0x8000)
+				PIXEL(target, tx+x, ty+y, tw) = Pixel;
+		}
+	}
+}

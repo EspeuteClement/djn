@@ -75,7 +75,6 @@ void parse_image(FILE* output, ImageData* Data)
 	{
 		for (int x = 0; x < Data->w; ++x)
 		{
-			char bfr[10];
 			if (x > 0 || y > 0)
 				fwrite(",", 1, 1, output);
 			fprintf_s(output, "0x%04X", (int)Data->getPixel(x,y));
@@ -83,16 +82,17 @@ void parse_image(FILE* output, ImageData* Data)
 	}
 }
 
-void parse_template()
+void parse_template(const char* TemplatePath, const char* OutputPath, ImageData* Data)
 {
+	assert(Data != nullptr);
 	FILE* output = nullptr;
 	FILE* templ = nullptr;
 
-	ImageData* Data = djnPakLoadImage(gImagePath);
+	errno_t outerr = fopen_s(&output, OutputPath, "w");
+	errno_t err = fopen_s(&templ, TemplatePath, "r");
 
-	const char* templPath = "res/template.c";
-	errno_t outerr = fopen_s(&output, "_bin/output.c", "w");
-	errno_t err = fopen_s(&templ, templPath, "r");
+	printf("Generating %s ...\n", OutputPath);
+
 
 	if (Data != nullptr 
 		&& outerr == 0
@@ -142,18 +142,16 @@ void parse_template()
 				fwrite(&c, 1, 1, output);
 			}
 		} while (c != EOF);
+		printf("Succesfully generated %s !\n", OutputPath);
 	}
 	else
 	{
-		if (Data == nullptr) {}
-		else if (output == nullptr)
-			printf("Couldn't open output file\n");
+		if (output == nullptr)
+			printf("Couldn't open output file %s\n", OutputPath);
 		else if (templ == nullptr)
-			printf("Couldn't open template file %s\n", templPath);
+			printf("Couldn't open template file %s\n", TemplatePath);
 	}
 
-	if (Data)
-		delete Data;
 	if (templ)
 		fclose(templ);
 	if (output)
@@ -165,7 +163,14 @@ int main(int argc, char* argv[]) {
 	_getcwd(bfr, 256);
 	printf("%s\n", bfr);
 
-	parse_template();
+	ImageData* data = djnPakLoadImage(gImagePath);
+	if (data)
+	{
+		parse_template("res/template.h", "src/data.generated.h", data);
+		parse_template("res/template.cpp", "src/data.generated.cpp", data);
+		delete data;
+	}
+
 	return 1;
 }
 
