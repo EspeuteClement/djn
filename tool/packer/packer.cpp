@@ -1,8 +1,8 @@
 #include <cstdio>
-#define STB_IMAGE_IMPLEMENTATION
 
 #pragma warning( push)
 #pragma warning( disable : 26451 6011 6262 6308 6387 28182 ) // Arithmetic overflow
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 #pragma warning( pop )
 #include <windows.h>
@@ -25,11 +25,6 @@ struct ImageData {
 int g_image_w;
 int g_image_h;
 unsigned char* g_image_data;
-
-int InitImageData(int w, int h, ImageData* data)
-{
-	
-}
 
 int open_image()
 {
@@ -150,7 +145,7 @@ int main(int argc, char* argv[]) {
 	GetCurrentDirectoryA(256, buf);
 	printf("Current working dir: %s\n", buf);
 
-	if (!open_image());
+	if (!open_image())
 		return -1;
 	parse_template();
 	close_image();
