@@ -19,7 +19,6 @@ int x = 0;
 void Update()
 {
 	x += 1;
-	x = x % 304;
 }
 
 void Draw() {
