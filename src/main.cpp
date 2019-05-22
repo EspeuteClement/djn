@@ -25,7 +25,7 @@ void Update()
 void Draw() {
 	memset(gScreenBuffer.data, 0x8F, GAME_WIDTH * GAME_HEIGHT * 2);
 
-	for (int i = 0; i < 30000; ++i)
+	for (int i = 0; i < 1000; ++i)
 	{
 		djnBlit(gGameSprites, gScreenBuffer, 16 + (i%3)*16, 0, 16, 16, (x + i*9713) % 300, (i*771) % 210);
 	}
