@@ -7,8 +7,10 @@
 
 // SDL stuff
 static SDL_Window* gSDLWindow = nullptr;
-static SDL_Surface* gSDLWindowSurface = nullptr;
 static SDL_Surface* gSDLGameSurface = nullptr;
+
+static SDL_Texture* gSDLTexture = nullptr;
+static SDL_Renderer* gSDLRenderer = nullptr;
 
 // Static djn stuff
 static djnConfig gConfig;
@@ -32,7 +34,7 @@ static bool CreateSurface()
 	rmask = 0b0000000000011111;
 	gmask = 0b0000001111100000;
 	bmask = 0b0111110000000000;
-	amask = 0b1000000000000000;
+	amask = 0b0000000000000000;
 #endif
 
 	gSDLGameSurface = SDL_CreateRGBSurface(0, 320, 240, 16,
@@ -45,6 +47,13 @@ static bool CreateSurface()
 	gScreenBuffer.w = 320;
 	gScreenBuffer.h = 240;
 	gScreenBuffer.data = (uint16_t*)gSDLGameSurface->pixels;
+
+	gSDLTexture = SDL_CreateTexture(gSDLRenderer, SDL_PIXELFORMAT_RGB555, SDL_TEXTUREACCESS_STREAMING, gScreenBuffer.w, gScreenBuffer.h);
+	if (!gSDLTexture)
+	{
+		SDL_Log("SDL_CreateTexture() failed: %s", SDL_GetError());
+		return false;
+	}
 	return true;
 }
 
@@ -67,12 +76,20 @@ bool djnInit(djnConfig config)
 		SDL_Log("Failed to initialize SDL window: %s", SDL_GetError());
 		return false;
 	}
-	gSDLWindowSurface = SDL_GetWindowSurface(gSDLWindow);
-	if (!CreateSurface())
+	
+	gSDLRenderer = SDL_CreateRenderer(gSDLWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	if (!gSDLRenderer)
 	{
-		SDL_Log("Failed to initialize Surface: %s", SDL_GetError());
+		SDL_Log("Failed to create renderer");
 		return false;
 	}
+
+	if (!CreateSurface())
+	{
+		SDL_Log("Failed to create surface");
+		return false;
+	}
+
 
 	gInit = true;
 	gQuitting = false;
@@ -91,16 +108,24 @@ static void _djnStep()
 
 	gConfig.UpdateFunction();
 
-	SDL_LockSurface(gSDLGameSurface);
+	int pitch;
+	void* pixels;
+	int success = SDL_LockTexture(gSDLTexture, NULL, &pixels, &pitch);
+	if (success != 0)
+	{
+		SDL_Log("Couldn't lock texture : %s\n", SDL_GetError());
+	}
+	gScreenBuffer.data = (djnPixel*) pixels;
 	gConfig.DrawFunction();
-	SDL_UnlockSurface(gSDLGameSurface);
+	SDL_UnlockTexture(gSDLTexture);
 
-	//SDL_LockSurface(gSDLWindowSurface);
-	SDL_BlitScaled(gSDLGameSurface, &SDL_Rect({ 0,0,GAME_WIDTH, GAME_HEIGHT }), gSDLWindowSurface, &SDL_Rect({ 0,0,WINDOW_WIDTH, WINDOW_HEIGHT }));
-	//SDL_UnlockSurface(gSDLWindowSurface);
+	SDL_RenderClear(gSDLRenderer);
+	SDL_RenderCopy(gSDLRenderer, gSDLTexture, NULL, NULL);
+	SDL_RenderPresent(gSDLRenderer);
 
-	SDL_UpdateWindowSurface(gSDLWindow);
-	printf("frame %d", gframe++);
+	//SDL_UpdateWindowSurface(gSDLWindow);
+	printf("frame %7.2f\n", (gframe/60.0f));
+	gframe++;
 	// Todo : True sync
 	//SDL_Delay(1);
 }
