@@ -18,6 +18,21 @@ static bool gQuitting = false;
 static bool gInit = false;
 djnImage gScreenBuffer;
 
+struct djnMapping
+{
+	int16_t player;
+	int16_t identifier;
+	djnBtn btn;
+};
+
+#define MAX_MAPPINGS 16
+static djnMapping KeyboardMappings[MAX_MAPPINGS];
+static djnMapping JoystickMappings[MAX_MAPPINGS];
+
+#define DJN_BTN_HISTORY_COUNT 2
+static uint16_t gDjnBtnHistory[DJN_BTN_HISTORY_COUNT];
+static uint8_t gDjnBtnFrame;
+
 uint32_t gframe = 0;
 
 static bool CreateSurface()
@@ -94,7 +109,60 @@ bool djnInit(djnConfig config)
 	gInit = true;
 	gQuitting = false;
 
+	for (int i = 0; i < MAX_MAPPINGS; ++i)
+	{
+		KeyboardMappings[i] = { -1,-1, djnBtn::NONE};
+	}
+
+	for (int i = 0; i < DJN_BTN_HISTORY_COUNT; ++i)
+	{
+		gDjnBtnHistory[i] = 0;
+	}
+	gDjnBtnFrame = 0;
+
+	djnInputRegisterKeyboard(SDL_SCANCODE_UP, 0, djnBtn::UP);
+	djnInputRegisterKeyboard(SDL_SCANCODE_DOWN, 0, djnBtn::DOWN);
+	djnInputRegisterKeyboard(SDL_SCANCODE_LEFT, 0, djnBtn::LEFT);
+	djnInputRegisterKeyboard(SDL_SCANCODE_RIGHT, 0, djnBtn::RIGHT);
+
+	djnInputRegisterKeyboard(SDL_SCANCODE_X, 0, djnBtn::A);
+	djnInputRegisterKeyboard(SDL_SCANCODE_C, 0, djnBtn::B);
+	djnInputRegisterKeyboard(SDL_SCANCODE_Q, 0, djnBtn::X);
+	djnInputRegisterKeyboard(SDL_SCANCODE_S, 0, djnBtn::Y);
+
+
+
+
+
 	return true;
+}
+
+static void _djnUpdateBtn()
+{
+	gDjnBtnFrame = (gDjnBtnFrame + 1) % DJN_BTN_HISTORY_COUNT;
+	const Uint8* kbd = SDL_GetKeyboardState(NULL);
+
+	gDjnBtnHistory[gDjnBtnFrame] = 0;
+	
+	for (int i = 0; i < MAX_MAPPINGS; ++i)
+	{
+		djnMapping& map = KeyboardMappings[i];
+		if (map.btn != djnBtn::NONE)
+		{
+			gDjnBtnHistory[gDjnBtnFrame] |= uint16_t(kbd[map.identifier]) << int16_t(map.btn);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	for (int i = 0; i < uint8_t(djnBtn::COUNT); ++i)
+	{
+		printf("%d", djnInputBtnDown(djnBtn(i)));
+	}
+	printf("\n");
+
 }
 
 static void _djnStep()
@@ -105,6 +173,8 @@ static void _djnStep()
 			gQuitting = true;
 		}
 	}
+
+	_djnUpdateBtn();
 
 	gConfig.UpdateFunction();
 
@@ -124,7 +194,7 @@ static void _djnStep()
 	SDL_RenderPresent(gSDLRenderer);
 
 	//SDL_UpdateWindowSurface(gSDLWindow);
-	printf("frame %7.2f\n", (gframe/60.0f));
+	//printf("frame %7.2f\n", (gframe/60.0f));
 	gframe++;
 	// Todo : True sync
 	//SDL_Delay(1);
@@ -182,4 +252,37 @@ void djnBlit(djnImage& source, djnImage& target, int sx, int sy, int sw, int sh,
 				target.get(tx+x,ty+y) = Pixel;
 		}
 	}
+}
+
+inline int8_t _djnRawInputDown(djnBtn btn, int8_t player, uint8_t frame)
+{
+	return (gDjnBtnHistory[frame] & (1 << int16_t(btn))) != 0;
+
+}
+
+int8_t djnInputBtnDown(djnBtn btn, int8_t player /*= 0*/)
+{
+	return _djnRawInputDown(btn, player, gDjnBtnFrame);
+}
+
+
+int8_t djnInputBtnPressed(djnBtn btn, int8_t player /*= 0*/)
+{
+	return _djnRawInputDown(btn, player, gDjnBtnFrame) && !_djnRawInputDown(btn, player, (gDjnBtnFrame + DJN_BTN_HISTORY_COUNT - 1) % DJN_BTN_HISTORY_COUNT);
+}
+
+djnMappingRef djnInputRegisterKeyboard(int16_t Keycode, int8_t player, djnBtn button)
+{
+	SDL_assert(Keycode >= 0 && Keycode <= SDL_NUM_SCANCODES);
+
+	for (int i = 0; i < MAX_MAPPINGS; ++i)
+	{
+		if (KeyboardMappings[i].btn == djnBtn::NONE)
+		{
+			
+			KeyboardMappings[i] = { player, int16_t(Keycode), button };
+			return &KeyboardMappings[i];
+		}
+	}
+	return nullptr;
 }

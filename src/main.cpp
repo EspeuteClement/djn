@@ -16,13 +16,21 @@ Indent with tabs
 #include "data.generated.h"
 
 int x = 0;
+uint16_t clear_color = 0x8F;
+
 void Update()
 {
-	x += 1;
+	x += djnInputBtnDown(djnBtn::RIGHT) - djnInputBtnDown(djnBtn::LEFT);
+
+	if (djnInputBtnPressed(djnBtn::A))
+	{
+		clear_color = (~clear_color) & 0xFF;
+		clear_color |= 0x80;
+	}
 }
 
 void Draw() {
-	memset(gScreenBuffer.data, 0x8F, GAME_WIDTH * GAME_HEIGHT * 2);
+	memset(gScreenBuffer.data, clear_color, GAME_WIDTH * GAME_HEIGHT * 2);
 
 	for (int i = 0; i < 1000; ++i)
 	{
@@ -37,7 +45,7 @@ int main(int argc, char *argv[]) {
 	conf.DrawFunction = &Draw;
 
 	bool success = djnInit(conf);
-	
+
 	if (success)
 	{
 		djnRun();
