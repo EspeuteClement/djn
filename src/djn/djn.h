@@ -13,11 +13,20 @@ typedef uint16_t djnPixel;
 
 struct djnImage
 {
-	int w;
-	int h;
+	uint16_t w;
+	uint16_t h;
 	djnPixel* data;
 
 	inline djnPixel& get(int x, int y) { return data[x + y * w]; };
+};
+
+struct djnTile
+{
+	djnImage* Image;
+	uint16_t ox;
+	uint16_t oy;
+	uint16_t tw;
+	uint16_t th;
 };
 
 extern djnImage gScreenBuffer;
@@ -34,6 +43,17 @@ void djnRun();
 
 void djnDeInit();
 
-void djnBlit(djnImage& source, djnImage& target, int sx, int sy, int sw, int sh, int tx, int ty);
+enum djnBlitFlag : uint8_t
+{
+	NONE = 0,
+	FLIP_X = 1,
+	FLIP_Y = 2,
+	FLIP_ALL = FLIP_X | FLIP_Y
+};
+
+void djnBlit(djnImage& source, djnImage& target, uint16_t sx, uint16_t sy, uint16_t sw, uint16_t sh, uint16_t tx, uint16_t ty, djnBlitFlag flags = djnBlitFlag::NONE);
+
+void djnBlit(djnTile& source, djnImage& target, uint16_t tx, uint16_t ty, djnBlitFlag flags = djnBlitFlag::NONE);
+
 
 #endif

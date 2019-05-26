@@ -31,9 +31,9 @@ static bool CreateSurface()
 	bmask = 0x0000ff00;
 	amask = 0x000000ff;
 #else
-	rmask = 0b0000000000011111;
+	bmask = 0b0000000000011111;
 	gmask = 0b0000001111100000;
-	bmask = 0b0111110000000000;
+	rmask = 0b0111110000000000;
 	amask = 0b0000000000000000;
 #endif
 
@@ -169,17 +169,36 @@ void djnDeInit()
 	SDL_Quit();
 }
 
-#define PIXEL(buffer, x,y,w) (buffer[(x)+(y)*(w)])
 
-void djnBlit(djnImage& source, djnImage& target, int sx, int sy, int sw, int sh, int tx, int ty)
+void djnBlit(djnImage& source, djnImage& target, uint16_t sx, uint16_t sy, uint16_t sw, uint16_t sh, uint16_t tx, uint16_t ty,djnBlitFlag flags)
 {
-	for (int y = 0; y < sh; ++y)
+	int dir_x = 1;
+	int dir_y = 1;
+	if (flags & djnBlitFlag::FLIP_X)
 	{
-		for (int x = 0; x < sw; ++x)
+		dir_x = -1;
+		sx += sw - 1;
+	}
+
+	if (flags & djnBlitFlag::FLIP_Y)
+	{
+		dir_y = -1;
+		sy += sh - 1;
+	}
+
+
+	for (uint16_t y = 0; y < sh; ++y)
+	{
+		for (uint16_t x = 0; x < sw; ++x)
 		{
-			djnPixel Pixel = source.get(sx + x, sy + y);
+			djnPixel Pixel = source.get(sx + x*dir_x, sy + y*dir_y);
 			if (Pixel & 0x8000)
 				target.get(tx+x,ty+y) = Pixel;
 		}
 	}
+}
+
+void djnBlit(djnTile& source, djnImage& target, uint16_t tx, uint16_t ty, djnBlitFlag flags)
+{
+	djnBlit(*(source.Image), target, source.ox, source.oy, source.tw, source.th, tx, ty);
 }

@@ -55,9 +55,9 @@ ImageData* djnPakLoadImage(const char* imagePath)
 		for (int x = 0; x < data->w; ++x)
 		{
 			uint16_t bytes =
-				((int)((float)tempimage[(x + y * w) * 4 + 0] / 256.0f * 32.0f))			|	// R
+				((int)((float)tempimage[(x + y * w) * 4 + 0] / 256.0f * 32.0f) << 10)	|	// R
 				((int)((float)tempimage[(x + y * w) * 4 + 1] / 256.0f * 32.0f) << 5)	|	// G
-				((int)((float)tempimage[(x + y * w) * 4 + 2] / 256.0f * 32.0f) << 10)	|	// B
+				((int)((float)tempimage[(x + y * w) * 4 + 2] / 256.0f * 32.0f) << 0)	|	// B
 				((int)((float)tempimage[(x + y * w) * 4 + 3] / 256.0f * 2.0f) << 15);		// A
 			data->getPixel(x, y) = bytes;
 		}
@@ -82,9 +82,8 @@ void parse_image(FILE* output, ImageData* Data)
 	}
 }
 
-void parse_template(const char* TemplatePath, const char* OutputPath, ImageData* Data)
+void parse_template(const char* TemplatePath, const char* OutputPath, void (*Replacer)(FILE* Output, const char* Token, void* context), void* context)
 {
-	assert(Data != nullptr);
 	FILE* output = nullptr;
 	FILE* templ = nullptr;
 
@@ -94,8 +93,7 @@ void parse_template(const char* TemplatePath, const char* OutputPath, ImageData*
 	printf("Generating %s ...\n", OutputPath);
 
 
-	if (Data != nullptr 
-		&& outerr == 0
+	if (outerr == 0
 		&& err == 0)
 	{
 		int c = 0;
@@ -132,24 +130,7 @@ void parse_template(const char* TemplatePath, const char* OutputPath, ImageData*
 
 				assert(ptr - buffer < sizeof(buffer) - 1);
 
-				if (strcmp(buffer, "content") == 0)
-				{
-					parse_image(output, Data);
-				}
-				else if (strcmp(buffer, "width") == 0)
-				{
-					fprintf_s(output, "%d", Data->w);
-				}
-				else if (strcmp(buffer, "height") == 0)
-				{
-					fprintf_s(output, "%d", Data->h);
-				}
-				else if (strcmp(buffer, "name") == 0)
-				{
-					fprintf_s(output, "tempdata");
-				}
-
-				//fwrite(&c, 1, 1, output);
+				Replacer(output, buffer, context);
 			}
 		} while (c != EOF);
 		printf("Succesfully generated %s !\n", OutputPath);
@@ -168,6 +149,65 @@ void parse_template(const char* TemplatePath, const char* OutputPath, ImageData*
 		fclose(output);
 }
 
+void ReplacerImage(FILE* output, const char* buffer, void* context)
+{
+	ImageData* Data = (ImageData*) context;
+
+	if (strcmp(buffer, "content") == 0)
+	{
+		parse_image(output, Data);
+	}
+	else if (strcmp(buffer, "width") == 0)
+	{
+		fprintf_s(output, "%d", Data->w);
+	}
+	else if (strcmp(buffer, "height") == 0)
+	{
+		fprintf_s(output, "%d", Data->h);
+	}
+	else if (strcmp(buffer, "name") == 0)
+	{
+		fprintf_s(output, "tempdata");
+	}
+}
+
+char* ReadAll(const char* path)
+{
+	FILE* file;
+	long size = 0;
+	int res = fopen_s(&file, path, "r");
+
+	if (res)
+	{
+		fseek(file, 0L, SEEK_END);
+		size = ftell(file);
+		rewind(file);
+
+		char* buffer = (char*)malloc(size);
+
+		fread(buffer, 1, size, file);
+
+		fclose(file);
+
+		return buffer;
+	}
+	return NULL;
+}
+
+/*void ParseMap(const char * path)
+{
+	FILE* file;
+	long size = 0;
+	int res = fopen_s(&file, path, "r");
+
+	if (res)
+	{
+
+	}
+	char* DataString = ReadAll(path);
+	fscanf_s()
+}*/
+
 int main(int argc, char* argv[]) {
 	char bfr[256];
 	_getcwd(bfr, 256);
@@ -176,8 +216,8 @@ int main(int argc, char* argv[]) {
 	ImageData* data = djnPakLoadImage(gImagePath);
 	if (data)
 	{
-		parse_template("res/template.h", "src/data.generated.h", data);
-		parse_template("res/template.cpp", "src/data.generated.cpp", data);
+		parse_template("res/template.h", "src/data.generated.h", ReplacerImage, data);
+		parse_template("res/template.cpp", "src/data.generated.cpp", ReplacerImage, data);
 		delete data;
 	}
 
