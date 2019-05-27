@@ -3,6 +3,7 @@
 #include "data.generated.h"
 #include "djn/djn.h"
 #include "cstdio"
+#include <math.h>
 
 #define KSR_MAP_WIDTH 20
 #define KSR_MAP_HEIGHT 15
@@ -29,53 +30,6 @@ static uint8_t ksrMAP[KSR_MAP_HEIGHT][KSR_MAP_WIDTH]
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 };
 
-struct ArrowData
-{
-	uint8_t spr_id;
-	djnBlitFlag BlitFlags;
-} DirToArrow[] =
-{
-	{4, djnBlitFlag::FLIP_X},  
-	{5, djnBlitFlag::NONE},	  
-	{4, djnBlitFlag::NONE},		
-	{3, djnBlitFlag::FLIP_X}, // <-
-	{0, djnBlitFlag::NONE}, // none
-	{3, djnBlitFlag::NONE}, // ->
-	{4, djnBlitFlag::FLIP_ALL},
-	{5, djnBlitFlag::FLIP_Y},
-	{4, djnBlitFlag::FLIP_Y},
-};
-
-inline ArrowData VecToArrow(Vec2& vec)
-{
-	return DirToArrow[(1+vec.x) + (1+vec.y) * 3];
-}
-
-namespace Direction
-{
-	enum : uint8_t
-	{
-		NONE = 0,
-		EAST = 1,
-		NORTH = 2,
-		WEST = 4,
-		SOUTH = 8,
-		NORTH_EAST = EAST | NORTH,
-		NORTH_WEAST = WEST | NORTH,
-		SOUTH_EAST = EAST | SOUTH,
-		SOUTH_WEST = WEST | SOUTH
-	};
-}
-
-inline Vec2 DirToVec(uint8_t dir)
-{
-	return {
-				((dir & Direction::EAST) != 0) - ((dir & Direction::WEST) != 0),
-				((dir & Direction::SOUTH) != 0) - ((dir & Direction::NORTH) != 0)
-	};
-}
-
-
 namespace GameState
 {
 	enum : uint8_t
@@ -89,10 +43,9 @@ static int gKsrGameState = GameState::WAIT_FOR_PLAYER;
 
 struct ksrObject
 {
-	int16_t x;
-	int16_t y;
-
-	uint8_t direction;
+	Vec2f Pos;
+	Vec2f Speed;
+	Vec2f Acc;
 
 	uint8_t SprId;
 };
@@ -102,6 +55,10 @@ struct ksrObject
 ksrObject Obj[MAX_OBJECT];
 
 int x = 0;
+int numberOfIter = -1;
+#define MAX_ITERS 60
+
+#define RADIUS 8.0f
 
 void UpdateWaitForPlayer()
 {
@@ -113,24 +70,114 @@ void UpdateWaitForPlayer()
 
 void UpdateEndTurn()
 {
+	if (numberOfIter == -1)
+		numberOfIter = MAX_ITERS;
+
+	numberOfIter--;
+	const float DeltaTime = 0.016;
+
 
 	// Move each object
 	for (int i = 0; i < MAX_OBJECT; ++i)
 	{
 		ksrObject& o = Obj[i];
-		if (o.x >= 0)
+		if (o.Pos.x >= 0)
 		{
-			Vec2 v = DirToVec(o.direction);
+			Vec2f NewAcc = o.Acc;
 
-			Vec2 NewDir()
+			// Drag
+			//o.Acc = -o.Speed * 0.80f;
 
-			o.x += v.x * KSR_CELL_SIZE;
-			o.y += v.y * KSR_CELL_SIZE;
+			o.Pos = 0.5 * o.Acc * DeltaTime * DeltaTime + o.Speed * DeltaTime + o.Pos;
+			o.Speed = o.Speed + (o.Acc + NewAcc) / 2.0f * DeltaTime;
+
+			o.Acc = NewAcc;
 		}
 	}
 
-	printf("EndTurn\n");
-	gKsrGameState = GameState::WAIT_FOR_PLAYER;
+#define MAX_COLLISIONS 1
+	ksrObject* Collisions[MAX_COLLISIONS][2];
+	int CollisionPos = 0;
+
+	// Resolve collision
+	for (int i = 0; i < MAX_OBJECT; ++i)
+	{
+		ksrObject& object = Obj[i];
+		if (object.Pos.x >= 0.0f)
+		{
+			for (int j = 0; j < MAX_OBJECT; ++j)
+			{
+				if (i != j)
+				{
+					ksrObject& target = Obj[j];
+
+					if (target.Pos.x >= 0.0f)
+					{
+						float distSqr = object.Pos.LengthSqr(target.Pos);
+						if (distSqr <= (2 * RADIUS) * (2 * RADIUS))
+						{
+							if (CollisionPos < MAX_COLLISIONS)
+							{
+								Collisions[CollisionPos][0] = &object;
+								Collisions[CollisionPos][1] = &target;
+								CollisionPos++;
+							}
+
+							float Dist = sqrt(distSqr);
+							float Overlap = 0.5f * (Dist - RADIUS - RADIUS);
+
+							Vec2f MovVec = Overlap * (object.Pos - target.Pos) / Dist;
+
+							object.Pos -= MovVec;
+							target.Pos += MovVec;
+							
+						}
+					}
+					else
+					{
+						break;
+					}
+
+
+				}
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	for (int i = 0; i < CollisionPos; ++i)
+	{
+		ksrObject& o1 = *Collisions[i][0];
+		ksrObject& o2 = *Collisions[i][1];
+
+		float dist = o1.Pos.Length(o2.Pos);
+
+		Vec2f Normal = (o2.Pos - o1.Pos) / dist;
+		Vec2f Tangent(-Normal.y, Normal.x);
+
+		float dpTan1 = Tangent.Dot(o1.Speed);
+		float dpTan2 = Tangent.Dot(o2.Speed);
+
+		float dpNorm1 = Normal.Dot(o1.Speed);
+		float dpNorm2 = Normal.Dot(o2.Speed);
+
+		float m1 = dpNorm2;
+		float m2 = dpNorm1;
+
+		o1.Speed = Tangent * dpTan1 + Normal * m1;
+		o2.Speed = Tangent * dpTan2 + Normal * m2;
+	}
+
+	if (numberOfIter <= 0)
+	{
+		numberOfIter = -1;
+		printf("EndTurn\n");
+		gKsrGameState = GameState::WAIT_FOR_PLAYER;
+	}
+
 }
 
 
@@ -162,12 +209,9 @@ void DrawObjects()
 	for (int i = 0; i < MAX_OBJECT; ++i)
 	{
 		ksrObject& o = Obj[i];
-		if (o.x >= 0)
+		if (o.Pos.x >= 0)
 		{
-			djnBlit(gGameSprites, gScreenBuffer, o.SprId * 16, 0, 16, 16, o.x, o.y);
-			Vec2 v = DirToVec(o.direction);
-			ArrowData arr = VecToArrow(v);
-			djnBlit(gGameSprites, gScreenBuffer, arr.spr_id * 16, 0, 16, 16, o.x + v.x * KSR_CELL_SIZE, o.y + v.y * KSR_CELL_SIZE, arr.BlitFlags);
+			djnBlit(gGameSprites, gScreenBuffer, o.SprId * 16, 0, 16, 16, int(o.Pos.x-RADIUS), int(o.Pos.y - RADIUS));
 		}
 	}
 }
@@ -185,12 +229,12 @@ void Init()
 {
 	for (int i = 0; i < MAX_OBJECT; ++i)
 	{
-		Obj[i] = { -1,-1};
+		Obj[i] = { Vec2f(-1.0f,-1.0f)};
 	}
 
-	Obj[0] = { 8 * 16, 5 * 16, Direction::NONE, 2 };
-	Obj[0].direction = Direction::EAST;
+	Obj[0] = { Vec2f(8.0f,5.0f) * 16, Vec2f(90.0f,5.0f), Vec2f(0,0), 2};
+	Obj[1] = { Vec2f(12.0f,5.0f) * 16, Vec2f(0.0f,0.0f), Vec2f(0,0), 3 };
+	Obj[2] = { Vec2f(12.0f,8.0f) * 16, Vec2f(-60.0f,-90.0f), Vec2f(0,0), 3 };
 
-	Obj[1] = { 12 * 16, 5 * 16, Direction::NONE, 2 };
-	Obj[1].direction = Direction::WEST;
+
 }

@@ -239,9 +239,14 @@ void djnDeInit()
 	SDL_Quit();
 }
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
 
 void djnBlit(djnImage& source, djnImage& target, uint16_t sx, uint16_t sy, uint16_t sw, uint16_t sh, uint16_t tx, uint16_t ty,djnBlitFlag flags)
 {
+	if (tx < 0 || tx + sw > target.w || ty < 0 || ty + sh > target.h)
+		return;
+
 	int dir_x = 1;
 	int dir_y = 1;
 	if (flags & djnBlitFlag::FLIP_X)
@@ -255,6 +260,7 @@ void djnBlit(djnImage& source, djnImage& target, uint16_t sx, uint16_t sy, uint1
 		dir_y = -1;
 		sy += sh - 1;
 	}
+
 
 
 	for (uint16_t y = 0; y < sh; ++y)

@@ -55,8 +55,6 @@
 
 };*/
 
-typedef Vec2<float> Vec2f;
-
 
 template<typename T>
 struct Vec2
@@ -64,10 +62,12 @@ struct Vec2
 	T x;
 	T y;
 
+	Vec2():Vec2(T(0), T(0)){};
+
 	Vec2(const T& _x, const T& _y) : x(_x), y(_y) {};
 	static Vec2 Zero() { return Vec2(T(0), T(0)); };
 
-	inline Vec2 operator+ (const Vec2& rhs)
+	inline Vec2 operator+ (const Vec2& rhs) const
 	{
 		Vec2 v = *this;
 		return v += rhs;
@@ -79,8 +79,98 @@ struct Vec2
 		y += rhs.y;
 		return *this;
 	}
+
+	inline Vec2& operator-= (const Vec2& rhs)
+	{
+		x -= rhs.x;
+		y -= rhs.y;
+		return *this;
+	}
+
+	inline Vec2 operator- (const Vec2& rhs) const
+	{
+		Vec2 v = *this;
+		return v -= rhs;
+	}
+
+	inline Vec2 operator- () const
+	{
+		Vec2 t;
+		t.x = -x;
+		t.y = -y;
+		return t;
+	}
+
+	inline Vec2& operator*= (const Vec2& rhs)
+	{
+		x *= rhs.x;
+		y *= rhs.y;
+		return *this;
+	}
+
+	template<typename S>
+	inline Vec2& operator*= (const S& rhs)
+	{
+		x *= rhs;
+		y *= rhs;
+		return *this;
+	}
+
+	template<typename S>
+	inline Vec2& operator/= (const S& rhs)
+	{
+		x /= rhs;
+		y /= rhs;
+		return *this;
+	}
+
+	template<class S>
+	inline Vec2 operator* (const S& rhs) const
+	{
+		Vec2 t = *this;
+		return t *= rhs;
+	}
+
+	template<class S>
+	inline Vec2 operator/ (const S& rhs) const
+	{
+		Vec2 t = *this;
+		return t /= rhs;
+	}
+
+	inline T LengthSqr(const Vec2& rhs) const
+	{
+		Vec2 tmp = *this;
+		tmp -= rhs;
+		return T(tmp.x)* T(tmp.x) + T(tmp.y) * T(tmp.y);
+	}
+
+	inline T Length(const Vec2& rhs) const
+	{
+		return sqrt(LengthSqr(rhs));
+	}
+
+	inline T Dot(const Vec2& rhs) const
+	{
+		return x * rhs.x + y * rhs.y;
+	}
 };
 
+template<typename T, class S>
+inline Vec2<T> operator*(const S& lhs, const Vec2<T>& rhs)
+{
+	Vec2<T> t = rhs;
+	return t *= lhs;
+}
+
+template<typename T, class S>
+inline Vec2<T> operator/(const S& lhs, const Vec2<T>& rhs)
+{
+	Vec2<T> t = rhs;
+	return t /= lhs;
+}
+
+typedef Vec2<float> Vec2f;
 
 enum class djnBtn : int8_t
 {
