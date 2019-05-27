@@ -157,11 +157,11 @@ static void _djnUpdateBtn()
 		}
 	}
 
-	for (int i = 0; i < uint8_t(djnBtn::COUNT); ++i)
-	{
-		printf("%d", djnInputBtnDown(djnBtn(i)));
-	}
-	printf("\n");
+	//for (int i = 0; i < uint8_t(djnBtn::COUNT); ++i)
+	//{
+	//	printf("%d", djnInputBtnDown(djnBtn(i)));
+	//}
+	//printf("\n");
 
 }
 

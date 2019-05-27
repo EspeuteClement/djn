@@ -9,6 +9,79 @@
 #define WINDOW_WIDTH (GAME_WIDTH*2)
 #define WINDOW_HEIGHT (GAME_HEIGHT*2)
 
+/*struct Vec2sdfgsfg
+{
+	int16_t x;
+	int16_t y;
+
+	inline Vec2 operator+ (const Vec2& rhs)
+	{
+		Vec2 v = *this;
+		return v += rhs;
+	}
+
+	inline Vec2& operator+= (const Vec2& rhs)
+	{
+		x += rhs.x;
+		y += rhs.y;
+		return *this;
+	}
+
+	inline Vec2& operator- ()
+	{
+		Vec2 v;
+		v.x = -this->x;
+		v.y = -this->y;
+		return v;
+	}
+
+	inline Vec2& operator* (const Vec2& rhs)
+	{
+		x *= rhs.x;
+		y *= rhs.y;
+	}
+
+	inline Vec2& operator* (const float& rhs)
+	{
+		x *= rhs;
+		y += rhs;
+	}
+
+	inline Vec2& operator* (const int16_t& rhs)
+	{
+		x *= rhs;
+		y += rhs;
+	}
+
+};*/
+
+typedef Vec2<float> Vec2f;
+
+
+template<typename T>
+struct Vec2
+{
+	T x;
+	T y;
+
+	Vec2(const T& _x, const T& _y) : x(_x), y(_y) {};
+	static Vec2 Zero() { return Vec2(T(0), T(0)); };
+
+	inline Vec2 operator+ (const Vec2& rhs)
+	{
+		Vec2 v = *this;
+		return v += rhs;
+	}
+
+	inline Vec2& operator+= (const Vec2& rhs)
+	{
+		x += rhs.x;
+		y += rhs.y;
+		return *this;
+	}
+};
+
+
 enum class djnBtn : int8_t
 {
 	NONE,
