@@ -132,6 +132,7 @@ bool djnInit(djnConfig config)
 
 	djnInputRegisterKeyboard(SDL_SCANCODE_SPACE, 0, djnBtn::START);
 
+
 	return true;
 }
 
