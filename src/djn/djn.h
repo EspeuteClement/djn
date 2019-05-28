@@ -236,6 +236,8 @@ void djnBlit(djnImage& source, djnImage& target, uint16_t sx, uint16_t sy, uint1
 
 void djnBlit(djnTile& source, djnImage& target, uint16_t tx, uint16_t ty, djnBlitFlag flags = djnBlitFlag::NONE);
 
+void djnLine(djnImage& target, int x0, int y0, int x1, int y1, djnPixel color);
+
 
 int8_t djnInputBtnDown(djnBtn btn, int8_t player = 0);
 

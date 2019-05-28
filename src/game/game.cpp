@@ -1,5 +1,7 @@
 #include <cstring>
 
+#include "game.h"
+
 #include "data.generated.h"
 #include "djn/djn.h"
 #include "cstdio"
@@ -44,10 +46,12 @@ static int gKsrGameState = GameState::WAIT_FOR_PLAYER;
 struct ksrObject
 {
 	Vec2f Pos;
-	Vec2f Speed;
+	Vec2f Vel;
 	Vec2f Acc;
 
 	uint8_t SprId;
+
+	uint8_t PlayerId; // 0 = neutral, 1 = p1, 2 = p2
 };
 
 #define MAX_OBJECT 8
@@ -56,12 +60,36 @@ ksrObject Obj[MAX_OBJECT];
 
 int x = 0;
 int numberOfIter = -1;
+int SelectedId = 0;
 #define MAX_ITERS 60
 
 #define RADIUS 8.0f
 
 void UpdateWaitForPlayer()
 {
+	int deltaX = djnInputBtnPressed(djnBtn::RIGHT) - djnInputBtnPressed(djnBtn::LEFT);
+	if (deltaX != 0)
+	{
+		for (int i = 0; i < MAX_OBJECT; ++i)
+		{
+			SelectedId = (SelectedId + MAX_OBJECT + deltaX) % MAX_OBJECT;
+			if (Obj[SelectedId].Pos.x >= 0) break;
+		}
+	}
+
+	int deltaY = djnInputBtnDown(djnBtn::DOWN) - djnInputBtnDown(djnBtn::UP);
+	if (deltaY)
+	{
+		float x = Obj[SelectedId].Vel.x;
+		float y = Obj[SelectedId].Vel.y;
+		double angle = 0.1 * float(deltaY);
+		float cs = cos(angle);
+		float sn = sin(angle);
+
+		Obj[SelectedId].Vel.x = x * cs - y * sn;
+		Obj[SelectedId].Vel.y = x * sn + y * cs;
+	}
+
 	if (djnInputBtnPressed(djnBtn::A, 0))
 	{
 		gKsrGameState = GameState::END_TURN;
@@ -88,8 +116,8 @@ void UpdateEndTurn()
 			// Drag
 			//o.Acc = -o.Speed * 0.80f;
 
-			o.Pos = 0.5 * o.Acc * DeltaTime * DeltaTime + o.Speed * DeltaTime + o.Pos;
-			o.Speed = o.Speed + (o.Acc + NewAcc) / 2.0f * DeltaTime;
+			o.Pos = 0.5 * o.Acc * DeltaTime * DeltaTime + o.Vel * DeltaTime + o.Pos;
+			o.Vel = o.Vel + (o.Acc + NewAcc) / 2.0f * DeltaTime;
 
 			o.Acc = NewAcc;
 		}
@@ -158,17 +186,17 @@ void UpdateEndTurn()
 		Vec2f Normal = (o2.Pos - o1.Pos) / dist;
 		Vec2f Tangent(-Normal.y, Normal.x);
 
-		float dpTan1 = Tangent.Dot(o1.Speed);
-		float dpTan2 = Tangent.Dot(o2.Speed);
+		float dpTan1 = Tangent.Dot(o1.Vel);
+		float dpTan2 = Tangent.Dot(o2.Vel);
 
-		float dpNorm1 = Normal.Dot(o1.Speed);
-		float dpNorm2 = Normal.Dot(o2.Speed);
+		float dpNorm1 = Normal.Dot(o1.Vel);
+		float dpNorm2 = Normal.Dot(o2.Vel);
 
 		float m1 = dpNorm2;
 		float m2 = dpNorm1;
 
-		o1.Speed = Tangent * dpTan1 + Normal * m1;
-		o2.Speed = Tangent * dpTan2 + Normal * m2;
+		o1.Vel = Tangent * dpTan1 + Normal * m1;
+		o2.Vel = Tangent * dpTan2 + Normal * m2;
 	}
 
 	if (numberOfIter <= 0)
@@ -183,6 +211,12 @@ void UpdateEndTurn()
 
 void Update()
 {
+	if (djnInputBtnPressed(djnBtn::START))
+	{
+		Init();
+		return;
+	}
+
 	switch (gKsrGameState)
 	{
 	case GameState::WAIT_FOR_PLAYER:
@@ -212,6 +246,12 @@ void DrawObjects()
 		if (o.Pos.x >= 0)
 		{
 			djnBlit(gGameSprites, gScreenBuffer, o.SprId * 16, 0, 16, 16, int(o.Pos.x-RADIUS), int(o.Pos.y - RADIUS));
+			djnLine(gScreenBuffer, int(o.Pos.x), int(o.Pos.y), int(o.Pos.x + o.Vel.x), int(o.Pos.y + o.Vel.y), 0xFF);
+
+			if (gKsrGameState == GameState::WAIT_FOR_PLAYER && i == SelectedId)
+			{
+				djnBlit(gGameSprites, gScreenBuffer, 5 * 16, 0, 16, 16, int(o.Pos.x - RADIUS), int(o.Pos.y - RADIUS));
+			}
 		}
 	}
 }
@@ -232,9 +272,11 @@ void Init()
 		Obj[i] = { Vec2f(-1.0f,-1.0f)};
 	}
 
-	Obj[0] = { Vec2f(8.0f,5.0f) * 16, Vec2f(90.0f,5.0f), Vec2f(0,0), 2};
-	Obj[1] = { Vec2f(12.0f,5.0f) * 16, Vec2f(0.0f,0.0f), Vec2f(0,0), 3 };
-	Obj[2] = { Vec2f(12.0f,8.0f) * 16, Vec2f(-60.0f,-90.0f), Vec2f(0,0), 3 };
+	Obj[0] = { Vec2f(8.0f,5.0f) * 16, Vec2f(90.0f,5.0f), Vec2f(0,0), 2, 1};
+	Obj[1] = { Vec2f(8.0f,10.0f) * 16, Vec2f(0.0f,0.0f), Vec2f(0,0), 2, 1 };
+
+	Obj[2] = { Vec2f(12.0f,5.0f) * 16, Vec2f(0.0f,0.0f), Vec2f(0,0), 3, 2};
+	Obj[3] = { Vec2f(12.0f,8.0f) * 16, Vec2f(-60.0f,-90.0f), Vec2f(0,0), 3 , 2};
 
 
 }

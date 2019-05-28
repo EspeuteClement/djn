@@ -130,9 +130,7 @@ bool djnInit(djnConfig config)
 	djnInputRegisterKeyboard(SDL_SCANCODE_Q, 0, djnBtn::X);
 	djnInputRegisterKeyboard(SDL_SCANCODE_S, 0, djnBtn::Y);
 
-
-
-
+	djnInputRegisterKeyboard(SDL_SCANCODE_SPACE, 0, djnBtn::START);
 
 	return true;
 }
@@ -274,10 +272,38 @@ void djnBlit(djnImage& source, djnImage& target, uint16_t sx, uint16_t sy, uint1
 	}
 }
 
+inline int clamp(int x, int min, int max)
+{
+	if (x < min) return min;
+	if (x > max) return max;
+	return x;
+}
+
 
 void djnBlit(djnTile& source, djnImage& target, uint16_t tx, uint16_t ty, djnBlitFlag flags)
 {
 	djnBlit(*(source.Image), target, source.ox, source.oy, source.tw, source.th, tx, ty);
+}
+
+void djnLine(djnImage& target, int x0, int y0, int x1, int y1, djnPixel color)
+{
+	int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+	int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+	int err = (dx > dy ? dx : -dy) / 2, e2;
+
+	for (;;) {
+		if (!(x0 < 0 || x0 >= target.w ||
+			y0 < 0 || y0 >= target.h)
+			)
+		{
+			target.get(x0, y0) = color;
+		}
+		if (x0 == x1 && y0 == y1) break;
+
+		e2 = err;
+		if (e2 > -dx) { err -= dy; x0 += sx; }
+		if (e2 < dy) { err += dx; y0 += sy; }
+	}
 }
 
 inline int8_t _djnRawInputDown(djnBtn btn, int8_t player, uint8_t frame)
